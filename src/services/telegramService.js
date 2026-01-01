@@ -1,16 +1,12 @@
 /**
- * Service for sending notifications via Telegram Bot API.
+ * Service for sending notifications via Backend Proxy.
  *
- * NOTE: Storing BOT_TOKEN in frontend code (even via environment variables)
- * exposes it to anyone who inspects the application code.
- * This is acceptable ONLY for this specific client-side demo requirement.
- * For production, calls should go through a secure backend proxy.
+ * SECURITY UPDATE:
+ * We no longer call Telegram API directly from the browser.
+ * Instead, we send data to our own backend (/api/notify), which holds the secrets.
  */
 class TelegramService {
   constructor() {
-    this.botToken = import.meta.env.VITE_BOT_TOKEN;
-    this.chatId = '1286446058'; // Hardcoded as per requirement
-    this.baseUrl = `https://api.telegram.org/bot${this.botToken}`;
     this.lastSentTime = 0;
     this.cooldownMs = 15000; // 15 seconds cooldown
     this.isPaused = false;
@@ -32,53 +28,45 @@ class TelegramService {
   }
 
   /**
-   * Sends a photo with caption to the configured Telegram chat.
+   * Sends a photo with caption to the backend proxy.
    *
    * @param {Blob} photoBlob - The image blob to send
    * @param {string} caption - The caption text
    * @returns {Promise<boolean>} - True if sent, false if throttled or failed
    */
   async sendPhoto(photoBlob, caption) {
-    if (!this.botToken) {
-      console.warn("Telegram Bot Token is missing in .env");
-      return false;
-    }
-
     // Double-check cooldown/pause here to be safe
     if (this.isCooldown()) {
       return false;
     }
 
     // CRITICAL FIX: Update lastSentTime IMMEDIATELY to prevent race conditions
-    // where multiple detections trigger multiple sends before the first one completes.
     this.lastSentTime = Date.now();
 
     try {
-      const url = `${this.baseUrl}/sendPhoto`;
+      // Send to our local proxy endpoint
+      const url = '/api/notify';
       const formData = new FormData();
-      formData.append('chat_id', this.chatId);
       formData.append('photo', photoBlob, 'alert.jpg');
       formData.append('caption', caption);
 
       const response = await fetch(url, {
         method: 'POST',
-        // Content-Type header is not set manually for FormData,
-        // the browser sets it with the boundary automatically.
         body: formData,
       });
 
       const data = await response.json();
 
-      if (data.ok) {
+      if (response.ok && data.success) {
         this.lastSentTime = Date.now();
-        console.log("Telegram photo sent successfully.");
+        console.log("Telegram photo sent successfully via proxy.");
         return true;
       } else {
-        console.error("Telegram API Error:", data.description);
+        console.error("Backend Proxy Error:", data.error || data);
         return false;
       }
     } catch (error) {
-      console.error("Network Error sending Telegram photo:", error);
+      console.error("Network Error sending to proxy:", error);
       return false;
     }
   }
