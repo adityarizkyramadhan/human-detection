@@ -1,10 +1,10 @@
 # Stage 1: Build Frontend
-FROM node:24-alpine as builder
+FROM node:18-alpine as builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy package files (explicitly copying package-lock.json is safer)
+COPY package.json package-lock.json ./
 
 # Install dependencies
 RUN npm ci
@@ -17,12 +17,12 @@ COPY . .
 RUN npm run build
 
 # Stage 2: Serve with Node.js Backend
-FROM node:24-alpine
+FROM node:18-alpine
 
 WORKDIR /app
 
 # Copy package files (we need express dependencies)
-COPY package*.json ./
+COPY package.json package-lock.json ./
 
 # Install ONLY production dependencies
 RUN npm ci --omit=dev

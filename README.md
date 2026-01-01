@@ -19,6 +19,14 @@ npm run dev
 ```
 Open [http://localhost:5173](http://localhost:5173) in your browser. Allow camera access when prompted.
 
+### Run via Docker
+```bash
+docker run -d -p 3000:3000 \
+  -e BOT_TOKEN="your-telegram-bot-token" \
+  -e CHAT_ID="your-telegram-chat-id" \
+  username_dockerhub/human-detection:latest
+```
+
 ## 🏗 Architecture (Clean Architecture)
 
 This project follows a clean, separation-of-concerns approach:
